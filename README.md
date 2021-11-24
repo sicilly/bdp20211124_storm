@@ -1,9 +1,4 @@
 
-
-
-
-
-
 # Storm
 
 ## 1.DAG
@@ -54,7 +49,7 @@
 
 ## 3. Storm的物理结构
 
-![img](assets\20201012113925637.png)
+![img](assets/20201012113925637.png)
 
 ### 3.1.Nimbus
 
@@ -85,7 +80,7 @@
 - worker未特定拓扑的一个或多个组件spout/bolt产生一个或多个executor，默认情况下一个worker运行一个executor
 - Executor为特定拓扑的一个或多个组件Spout/Bolt实例运行一个或多个Task，默认情况下一个Executor运行一个task。
 
-![img](assets\834652-20170110095435260-394961324.png)
+![img](assets/834652-20170110095435260-394961324.png)
 
 ### 3.6 配置拓扑的并行度
 
@@ -166,7 +161,7 @@ builder.setBolt(id, bolt, parallelism_hint).setNumTasks(val);
 - 第一级Bolt的输出可以作为下一级Bolt的输入。而Spout不能有上一级。
 - Bolt几乎能够完成任何一种数据处理需求。
 
-![img](D:\Program Files\Typora\Storm的物理结构.assets\20181127172856484.png)
+![img](assets/20181127172856484.png)
 
 ### 4.6. Stream Group
 
@@ -184,7 +179,7 @@ builder.setBolt(id, bolt, parallelism_hint).setNumTasks(val);
 
 新建一个maven项目
 
-![image-20211124185352755](assets\image-20211124185352755.png)
+![image-20211124185352755](assets/image-20211124185352755.png)
 
 - pom.xml
 
@@ -364,5 +359,5 @@ public class NumberBolt extends BaseBasicBolt{
 
 运行结果：
 
-![image-20211124190442444](assets\image-20211124190442444.png)
+![image-20211124190442444](assets/image-20211124190442444.png)
 
