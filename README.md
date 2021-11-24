@@ -111,7 +111,7 @@ builder.setSpout(id, spout, parallelism_hint).setNumTasks(val);
 //设置Bolt的Executor数量参数parallelism_hint，Task数量参数val
 builder.setBolt(id, bolt, parallelism_hint).setNumTasks(val);       
 ```
-
+![image-20211124220731165](assets/image-20211124220731165.png)
 
 
 ## 4. Storm的计算架构
