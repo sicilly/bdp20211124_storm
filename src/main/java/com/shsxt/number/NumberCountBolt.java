@@ -7,7 +7,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-public class NumberBolt extends BaseBasicBolt{
+public class NumberCountBolt extends BaseBasicBolt{
 
     //声明一个统计器
     private static int count;
@@ -19,12 +19,9 @@ public class NumberBolt extends BaseBasicBolt{
      */
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
-        System.out.println("1.NumberBolt从上游获取数据为： " + input);
-        System.out.println("NumberBolt打印出数据: "+ input.getInteger(0)+"--"+ input.getIntegerByField("num"));
-        count += input.getInteger(0);
-        System.out.println("截至到本次,NumberBolt共获取数据和为： "+count);
-        //继续向后发送数据
-        collector.emit(new Values(count));
+        System.out.println("2.NumberCountBolt接收到"+input);
+        System.out.println("NumberCountBolt打印出"+ input.getInteger(0)+"--"+ input.getIntegerByField("count"));
+        System.out.println("-----------");
     }
 
     /**
@@ -33,6 +30,7 @@ public class NumberBolt extends BaseBasicBolt{
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("count"));
+
+
     }
 }

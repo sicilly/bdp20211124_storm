@@ -14,6 +14,8 @@ public class NumberTopology {
         topologyBuilder.setSpout("numberSpout",new NumberSpout());
         //设置拓扑关系(Bolt)
         topologyBuilder.setBolt("number1",new NumberBolt()).shuffleGrouping("numberSpout");
+        //设置拓扑关系(Bolt)
+        topologyBuilder.setBolt("numberCountSpout",new NumberCountBolt()).shuffleGrouping("number1");
 
         //启动Togology
         Config conf = new Config();
