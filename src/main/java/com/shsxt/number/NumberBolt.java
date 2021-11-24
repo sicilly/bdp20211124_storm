@@ -19,10 +19,10 @@ public class NumberBolt extends BaseBasicBolt{
      */
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
-        System.out.println("1.NumberBolt从上游获取数据为： " + input);
-        System.out.println("NumberBolt打印出数据: "+ input.getInteger(0)+"--"+ input.getIntegerByField("num"));
+//        System.out.println("a1.NumberBolt从NumberSpout获取数据为： " + input);
+        System.out.println("a1.NumberBolt打印出数据: "+ input.getInteger(0));
         count += input.getInteger(0);
-        System.out.println("截至到本次,NumberBolt共获取数据和为： "+count);
+//        System.out.println("数据和为： "+count);
         //继续向后发送数据
         collector.emit(new Values(count));
     }

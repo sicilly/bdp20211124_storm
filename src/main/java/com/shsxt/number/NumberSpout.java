@@ -13,7 +13,8 @@ public class NumberSpout extends BaseRichSpout{
 
     //声明一个SpoutOutputCollector对象，用于发送数据
     private SpoutOutputCollector collector;
-
+    //计数器
+    private int count;
     /**
      * 当我们执行任务的时候，用于初始化对象
      * @param conf
@@ -32,10 +33,9 @@ public class NumberSpout extends BaseRichSpout{
      */
     @Override
     public void nextTuple() {
-        //随机生成一个数字
-        int number = (int) (Math.random()*101);
         //将数据发送给下一个Bolt
-        this.collector.emit(new Values(number));
+        System.out.println("NumberSpout开始发送数据-------");
+        this.collector.emit(new Values(count++));
         try {
             //限制传输速度 1s传一个
             Thread.sleep(1000);

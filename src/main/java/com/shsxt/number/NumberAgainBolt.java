@@ -3,11 +3,9 @@ package com.shsxt.number;
 import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseBasicBolt;
-import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.tuple.Values;
 
-public class NumberCountBolt extends BaseBasicBolt{
+public class NumberAgainBolt extends BaseBasicBolt{
 
     //声明一个统计器
     private static int count;
@@ -19,8 +17,8 @@ public class NumberCountBolt extends BaseBasicBolt{
      */
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
-//        System.out.println("a2.NumberCountBolt从NumberBolt接收到"+input);
-        System.out.println("a2.NumberCountBolt打印出数据和为"+ input.getInteger(0));
+//        System.out.println("b1.NumberAgainBolt从NumberSpout接收到"+input);
+        System.out.println("b1.NumberAgainBolt打印出"+ input.getIntegerByField("num"));
     }
 
     /**
