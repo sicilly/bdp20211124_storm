@@ -7,11 +7,11 @@
 
 ## 2. Storm介绍
 
-### 2.1Storm简介
+### 2.1.Storm简介
 
 大数据实时处理解决方案（流计算）的应用日趋广泛，目前已是分布式技术领域最新爆发点，而Storm更是流计算技术中的主流。
 
-### 2.2Storm的优点
+### 2.2.Storm的优点
 
 - storm使用netty传送消息，消除了中间的排队过程，是消息能够直接在任务自身之间流动。在消息的背后是一种用于序列化和反序列化Storm的原语类型的自动化且高效的机制。
 - storm实现了有保障的消息处理，所以每个元组都会通过该拓扑结构进行全面处理。
@@ -82,7 +82,7 @@
 
 ![img](assets/834652-20170110095435260-394961324.png)
 
-### 3.6 配置拓扑的并行度
+### 3.6. 配置拓扑的并行度
 
 -  工作进程Worker数量  
 
@@ -452,3 +452,216 @@ topologyBuilder.setBolt("ShuffleBolt",new ShuffleBolt(),3).shuffleGrouping("Grou
 > ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [14, aa]
 > ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [15, bb]
 
+## 7.Storm之WordCount
+
+storm任务从数据源每次读取一个完整的英文句子，将这个句子分解为独立的单词，最后，实时的输出每个单词以及它出现过的次数。
+
+![image-20211125214335808](assets/image-20211125214335808.png)
+
+- com.shsxt.wordcount.WordCountTopology
+
+```java
+package com.shsxt.wordcount;
+
+import backtype.storm.Config;
+import backtype.storm.LocalCluster;
+import backtype.storm.generated.StormTopology;
+import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.tuple.Fields;
+
+
+public class WordCountTopology {
+
+    public static void main(String[] args) {
+        //创建任务的拓扑图
+        TopologyBuilder topologyBuilder = new TopologyBuilder();
+        //设置拓扑关系（Spout)
+        topologyBuilder.setSpout("WordCountSpout",new WordCountSpout());
+        //设置拓扑关系(Bolt)---切分行
+        topologyBuilder.setBolt("LineSplitBolt",new LineSplitBolt(),2).shuffleGrouping("WordCountSpout");
+        //设置拓扑关系(Bolt)---对单词数量进行统计，这里不能用shuffleGrouping，否则统计会出错
+//        topologyBuilder.setBolt("WordCountBolt",new WordCountBolt(),4).shuffleGrouping("LineSplitBolt");
+        topologyBuilder.setBolt("WordCountBolt",new WordCountBolt(),4).fieldsGrouping("LineSplitBolt",new Fields("word"));
+
+        //启动Togology
+        Config conf = new Config();
+        //创建一个togology
+        StormTopology topology = topologyBuilder.createTopology();
+        //本地模式启动集群
+        LocalCluster localCluster = new LocalCluster();
+        localCluster.submitTopology("WordCountTopology",conf,topology);
+
+    }
+}
+
+```
+
+- com.shsxt.wordcount.WordCountSpout
+
+```java
+package com.shsxt.wordcount;
+
+import backtype.storm.spout.SpoutOutputCollector;
+import backtype.storm.task.TopologyContext;
+import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.topology.base.BaseRichSpout;
+import backtype.storm.tuple.Fields;
+import backtype.storm.tuple.Values;
+
+import java.util.Map;
+import java.util.Random;
+
+public class WordCountSpout extends BaseRichSpout{
+
+    //声明一个SpoutOutputCollector对象，用于发送数据
+    private SpoutOutputCollector collector;
+    //首先创建一个数组存放要发送的数据
+    private String[] array = {
+            "Look I really sorry about that telephone call",
+            "I hope it is not too long",
+            "I do hope you are all right"
+    };
+    //创建Random对象
+    private Random random = new Random();
+    /**
+     * 当我们执行任务的时候，用于初始化对象
+     * @param conf
+     * @param context
+     * @param collector
+     */
+    @Override
+    public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
+        //获取初始化的发送器
+        this.collector = collector;
+    }
+
+    /**
+     * 重复调用这个方法从源数据获取一条记录
+     * 我们根据业务需求进行封装，然后通过SpoutOutputCollector发送给下一个Bolt
+     */
+    @Override
+    public void nextTuple() {
+        //获取本次要发送的字符串
+        String line = array[random.nextInt(array.length)];
+        //将数据发送给下一个Bolt
+        System.out.println("本次发送的数据："+line);
+        this.collector.emit(new Values(line));
+        try {
+            //限制传输速度 1s传一个
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 定义你输出值的属性
+     * @param declarer
+     */
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("line"));
+    }
+}
+```
+
+- com.shsxt.wordcount.WordSplitBolt
+
+```java
+package com.shsxt.wordcount;
+
+import backtype.storm.topology.BasicOutputCollector;
+import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.topology.base.BaseBasicBolt;
+import backtype.storm.tuple.Fields;
+import backtype.storm.tuple.Tuple;
+import backtype.storm.tuple.Values;
+
+public class LineSplitBolt extends BaseBasicBolt{
+
+
+    /**
+     * 处理数据的业务逻辑
+     * @param input
+     * @param collector
+     */
+    @Override
+    public void execute(Tuple input, BasicOutputCollector collector) {
+        //首先获取到一行数据
+        String line=input.getStringByField("line");
+        System.out.println("接收到line为"+line);
+
+        //对line进行切分
+        if(line!=null&&line.length()>0){
+            // 用空格切分
+            String[] words = line.split(" ");
+            // 发送到下一个Bolt
+            for (String word : words) {
+                //继续向后发送数据
+                collector.emit(new Values(word));
+            }
+        }
+    }
+
+    /**
+     * 如果需要向下传递数据，需要提前定义数据的格式
+     * @param declarer
+     */
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("word"));
+    }
+}
+```
+
+- com.shsxt.wordcount.WordCountBolt
+
+```java
+package com.shsxt.wordcount;
+
+import backtype.storm.topology.BasicOutputCollector;
+import backtype.storm.topology.OutputFieldsDeclarer;
+import backtype.storm.topology.base.BaseBasicBolt;
+import backtype.storm.tuple.Tuple;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class WordCountBolt extends BaseBasicBolt{
+
+    //声明一个map来存放以前的统计结果
+    private Map<String,Integer> map=new HashMap<>();
+
+    /**
+     * 处理数据的业务逻辑
+     * @param input
+     * @param collector
+     */
+    @Override
+    public void execute(Tuple input, BasicOutputCollector collector) {
+        // 获取单词
+        String word=input.getStringByField("word");
+        // 判断这个单词是否在map里
+        if(map.containsKey(word)){
+            // 最新统计的数量为
+            int count=map.get(word)+1;
+            // 重新设置到map
+            map.put(word,count);
+        }else{
+            // 将新单词放进map
+            map.put(word,1);
+        }
+        System.out.println(this+"本次执行完，单词"+word+"的数量为："+map.get(word));
+    }
+
+    /**
+     * 如果需要向下传递数据，需要提前定义数据的格式
+     * @param declarer
+     */
+    @Override
+    public void declareOutputFields(OutputFieldsDeclarer declarer) {
+
+
+    }
+}
+```
