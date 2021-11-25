@@ -4,6 +4,7 @@ import backtype.storm.Config;
 import backtype.storm.LocalCluster;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.tuple.Fields;
 
 
 public class GroupTopology {
@@ -15,17 +16,10 @@ public class GroupTopology {
         //设置拓扑关系（Spout)
         topologyBuilder.setSpout("GroupSpout",new GroupSpout());
 
-        //设置拓扑关系(Bolt)
-        //topologyBuilder.setBolt("GroupBolt",new GroupBolt()).shuffleGrouping("GroupSpout");
-
-        // 开启两个线程,默认每个线程有1个task----创建两个对象
-//        topologyBuilder.setBolt("GroupBolt",new GroupBolt(),2).shuffleGrouping("GroupSpout");
-
-        // 开启一个线程，设置task为2----创建两个对象
-//        topologyBuilder.setBolt("GroupBolt",new GroupBolt()).setNumTasks(2).shuffleGrouping("GroupSpout");
-
-        // 开启两个线程，里面有两个任务----还是创建两个对象（关键是看有几个task）
-        topologyBuilder.setBolt("GroupBolt",new GroupBolt(),2).setNumTasks(2).shuffleGrouping("GroupSpout");
+        // 开始测试分区策略
+        topologyBuilder.setBolt("ShuffleBolt",new ShuffleBolt(),3).shuffleGrouping("GroupSpout");
+//        topologyBuilder.setBolt("FieldsBolt",new FieldsBolt(),3).fieldsGrouping("GroupSpout",new Fields("word"));
+//        topologyBuilder.setBolt("AllBolt",new AllBolt(),2).allGrouping("GroupSpout");
 
 
         //启动Togology

@@ -175,7 +175,7 @@ builder.setBolt(id, bolt, parallelism_hint).setNumTasks(val);
 - 通过跟踪由Spout发出的每个元组构成的元组树可以确定元组是否已经完成处理。
 - 每个拓扑都有一个"消息延时"参数,如果Storm在延时时间内没有检测到元组是否处理完成,就会将该元组标记为处理失败,并会在稍后重新发送该元组。
 
-### 5. Storm之NumberCount
+## 5. Storm之NumberCount
 
 新建一个maven项目
 
@@ -360,4 +360,95 @@ public class NumberBolt extends BaseBasicBolt{
 运行结果：
 
 ![image-20211124190442444](assets/image-20211124190442444.png)
+
+## 6.Storm的数据分发策略
+
+1. Shuffle Grouping 
+
+   随机分组，随机派发stream里面的tuple，保证每个bolt task接收到的tuple数目大致相同。 轮询，平均分配
+
+2. Fields Grouping 
+
+   按字段分组，比如，按"user-id"这个字段来分组，那么具有同样"user-id"的 tuple 会被分到相同的Bolt里的一个task， 而不同的"user-id"则可能会被分配到不同的task。
+
+3. All Grouping 
+
+   广播发送，对于每一个tuple，所有的bolts都会收到
+
+4. Global Grouping 
+
+   全局分组，把tuple分配给task id最低的task 。
+
+5. None Grouping 
+
+   不分组，这个分组的意思是说stream不关心到底怎样分组。目前这种分组和Shuffle grouping是一样的效果。 有一点不同的是storm会把使用none grouping的这个bolt放到这个bolt的订阅者同一个线程里面去执行（未来Storm如果可能的话会这样设计）。
+
+6. Direct Grouping 
+
+   指向型分组， 这是一种比较特别的分组方法，用这种分组意味着消息（tuple）的发送者指定由消息接收者的哪个task处理这个消息。只有被声明为 Direct Stream 的消息流可以声明这种分组方法。而且这种消息tuple必须使用 emitDirect 方法来发射。消息处理者可以通过 TopologyContext 来获取处理它的消息的task的id (OutputCollector.emit方法也会返回task的id)
+
+7. Local or shuffle grouping 
+
+  本地或随机分组。如果目标bolt有一个或者多个task与源bolt的task在同一个工作进程中，tuple将会被随机发送给这些同进程中的tasks。否则，和普通的Shuffle Grouping行为一致 customGrouping 自定义，相当于mapreduce那里自己去实现一个partition一样。
+
+8. customGrouping
+
+   自定义，相当于mapreduce那里自己去实现一个partition一样。
+
+- 分区策略的测试
+
+```java
+topologyBuilder.setBolt("AllBolt",new AllBolt(),2).allGrouping("GroupSpout");
+```
+
+> AllBolt:[com.shsxt.group.AllBolt@7169f7c9:]source: GroupSpout:3, stream: default, id: {}, [1, cc]
+> AllBolt:[com.shsxt.group.AllBolt@4a8d78b6:]source: GroupSpout:3, stream: default, id: {}, [1, cc]
+> AllBolt:[com.shsxt.group.AllBolt@7169f7c9:]source: GroupSpout:3, stream: default, id: {}, [2, aa]
+> AllBolt:[com.shsxt.group.AllBolt@4a8d78b6:]source: GroupSpout:3, stream: default, id: {}, [2, aa]
+> AllBolt:[com.shsxt.group.AllBolt@7169f7c9:]source: GroupSpout:3, stream: default, id: {}, [3, bb]
+> AllBolt:[com.shsxt.group.AllBolt@4a8d78b6:]source: GroupSpout:3, stream: default, id: {}, [3, bb]
+> AllBolt:[com.shsxt.group.AllBolt@7169f7c9:]source: GroupSpout:3, stream: default, id: {}, [4, cc]
+> AllBolt:[com.shsxt.group.AllBolt@4a8d78b6:]source: GroupSpout:3, stream: default, id: {}, [4, cc]
+> AllBolt:[com.shsxt.group.AllBolt@7169f7c9:]source: GroupSpout:3, stream: default, id: {}, [5, aa]
+> AllBolt:[com.shsxt.group.AllBolt@4a8d78b6:]source: GroupSpout:3, stream: default, id: {}, [5, aa]
+> AllBolt:[com.shsxt.group.AllBolt@7169f7c9:]source: GroupSpout:3, stream: default, id: {}, [6, bb]
+> AllBolt:[com.shsxt.group.AllBolt@4a8d78b6:]source: GroupSpout:3, stream: default, id: {}, [6, bb]
+
+```java
+topologyBuilder.setBolt("FieldsBolt",new FieldsBolt(),3).fieldsGrouping("GroupSpout",new Fields("word"));
+```
+
+> FieldsBolt:[com.shsxt.group.FieldsBolt@1cd02e8d:]source: GroupSpout:4, stream: default, id: {}, [0, bb]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@48ad00ad:]source: GroupSpout:4, stream: default, id: {}, [1, cc]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@5b949c7d:]source: GroupSpout:4, stream: default, id: {}, [2, aa]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@1cd02e8d:]source: GroupSpout:4, stream: default, id: {}, [3, bb]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@48ad00ad:]source: GroupSpout:4, stream: default, id: {}, [4, cc]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@5b949c7d:]source: GroupSpout:4, stream: default, id: {}, [5, aa]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@1cd02e8d:]source: GroupSpout:4, stream: default, id: {}, [6, bb]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@48ad00ad:]source: GroupSpout:4, stream: default, id: {}, [7, cc]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@5b949c7d:]source: GroupSpout:4, stream: default, id: {}, [8, aa]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@1cd02e8d:]source: GroupSpout:4, stream: default, id: {}, [9, bb]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@48ad00ad:]source: GroupSpout:4, stream: default, id: {}, [10, cc]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@5b949c7d:]source: GroupSpout:4, stream: default, id: {}, [11, aa]
+> FieldsBolt:[com.shsxt.group.FieldsBolt@1cd02e8d:]source: GroupSpout:4, stream: default, id: {}, [12, bb]
+
+```java
+topologyBuilder.setBolt("ShuffleBolt",new ShuffleBolt(),3).shuffleGrouping("GroupSpout");
+```
+
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@4919faa0:]source: GroupSpout:1, stream: default, id: {}, [1, cc]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [2, aa]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@3e452750:]source: GroupSpout:1, stream: default, id: {}, [3, bb]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [4, cc]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@4919faa0:]source: GroupSpout:1, stream: default, id: {}, [5, aa]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@3e452750:]source: GroupSpout:1, stream: default, id: {}, [6, bb]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@4919faa0:]source: GroupSpout:1, stream: default, id: {}, [7, cc]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [8, aa]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [9, bb]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@3e452750:]source: GroupSpout:1, stream: default, id: {}, [10, cc]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@4919faa0:]source: GroupSpout:1, stream: default, id: {}, [11, aa]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@3e452750:]source: GroupSpout:1, stream: default, id: {}, [12, bb]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@4919faa0:]source: GroupSpout:1, stream: default, id: {}, [13, cc]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [14, aa]
+> ShuffleBolt:[com.shsxt.group.ShuffleBolt@1da5f071:]source: GroupSpout:1, stream: default, id: {}, [15, bb]
 

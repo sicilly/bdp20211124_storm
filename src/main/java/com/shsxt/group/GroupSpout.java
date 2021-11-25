@@ -15,6 +15,8 @@ public class GroupSpout extends BaseRichSpout{
     private SpoutOutputCollector collector;
     //计数器
     private int count;
+    //定义一个数组
+    private String[] strings = {"aa","bb","cc"};
     /**
      * 当我们执行任务的时候，用于初始化对象
      * @param conf
@@ -34,8 +36,7 @@ public class GroupSpout extends BaseRichSpout{
     @Override
     public void nextTuple() {
         //将数据发送给下一个Bolt
-        System.out.println("NumberSpout开始发送数据-------");
-        this.collector.emit(new Values(count++));
+        this.collector.emit(new Values(count++,strings[count%3]));
         try {
             //限制传输速度 1s传一个
             Thread.sleep(1000);
@@ -50,6 +51,6 @@ public class GroupSpout extends BaseRichSpout{
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("num"));
+        declarer.declare(new Fields("num","word"));
     }
 }
